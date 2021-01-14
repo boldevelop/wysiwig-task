@@ -1,7 +1,7 @@
 const buttons = document.querySelector('.toolkit').querySelectorAll('button');
 
 const isEmptySelection = (selection) => !Boolean(selection.toString());
-const setClass = (btnClass) => {
+const getClass = (btnClass) => {
     switch (btnClass) {
         case 'head-1':
             return 'header1-text'
@@ -13,24 +13,37 @@ const setClass = (btnClass) => {
             return 'italic-text'
     }
 }
+const insertNode = (range, element) => {
+    range.deleteContents();
+    range.insertNode(element);
+}
 
 buttons.forEach((btn) => {
 
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', () => {
         if (document.getSelection) {
             const selection = document.getSelection();
-
             if (isEmptySelection(selection)) {
                 return;
             }
 
             const range = selection.getRangeAt(0);
-            const oldContent = document.createTextNode(range.toString());
-            const newElement = document.createElement('span');
-            newElement.classList.add(setClass(btn.className));
-            newElement.appendChild(oldContent);
-            range.deleteContents();
-            range.insertNode(newElement);
+            const oldContent = range.extractContents();
+            const firstChild = oldContent.firstElementChild;
+            const customizingClass = getClass(btn.className);
+
+            if (firstChild && firstChild.className === customizingClass) {
+                /** not reliable unset styling */
+                const elementWithoutStyling = firstChild.innerHTML;
+                const template = document.createElement('template');
+                template.innerHTML = elementWithoutStyling;
+                insertNode(range, template.content.firstChild);
+            } else {
+                const newElement = document.createElement('span');
+                newElement.classList.add(customizingClass);
+                newElement.appendChild(oldContent);
+                insertNode(range, newElement);
+            }
         }
     })
 })
