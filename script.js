@@ -257,3 +257,24 @@ editor.addEventListener('cut', (event) => {
     event.preventDefault();
     sanitizeEditorGarbageTags();
 });
+
+// repeated code...
+editor.addEventListener('copy', (event) => {
+    const clipboardData = (event.clipboardData || window.clipboardData);
+    const selection = document.getSelection();
+
+    const classParentNode = identifyParentClass(selection);
+
+    const range = selection.getRangeAt(0);
+    const oldContent = range.cloneContents();
+
+    const rootSpan = createElement(classParentNode);
+    rootSpan.appendChild( oldContent.cloneNode(true) );
+
+    addStyleAttrForInnerSelectionContent(rootSpan);
+    addStyleAttrForRoot(rootSpan);
+
+    clipboardData.setData('text/html', rootSpan.outerHTML + "");
+    event.preventDefault();
+    sanitizeEditorGarbageTags();
+});
