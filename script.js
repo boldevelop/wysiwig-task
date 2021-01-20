@@ -1,6 +1,12 @@
 const buttons = document.querySelector('.toolkit').querySelectorAll('button');
 const editor = document.querySelector('.edit-area');
 
+const styleProperties = ['fontSize', 'lineHeight', 'fontWeight', 'color', 'fontFamily', 'fontStyle'];
+const header1Class = 'header1-text';
+const header2Class = 'header2-text';
+const boldClass = 'bold-text';
+const italicClass = 'italic-text';
+
 /** Detect empty selection.
  * @param selection {Selection}
  * @return {boolean}
@@ -14,13 +20,13 @@ const isEmptySelection = (selection) => !Boolean(selection.toString());
 const getClass = (btnClass) => {
     switch (btnClass) {
         case 'head-1':
-            return 'header1-text'
+            return header1Class
         case 'head-2':
-            return 'header2-text'
+            return header2Class
         case 'bold':
-            return 'bold-text'
+            return boldClass
         case 'italic':
-            return 'italic-text'
+            return italicClass
     }
 };
 
@@ -40,10 +46,10 @@ const insertNode = (range, element) => {
 const createElement = (className) => {
     let newElement;
     switch (className) {
-        case 'header1-text':
+        case header1Class:
             newElement = document.createElement('h1');
             break;
-        case 'header2-text':
+        case header2Class:
             newElement = document.createElement('h2');
             break;
         default:
@@ -107,6 +113,30 @@ const isSelectionAtEditArea = (parent) => {
     return parent && isSelectionAtEditArea(parent.parentNode);
 }
 
+/**
+ * create inline Styles on elements
+ * */
+createInlineStyles = () => {
+    const nodeList = editor.querySelectorAll(`*`);
+    nodeList.forEach( (node) => {
+        const nodeStyle = getComputedStyle(node);
+        const nodeClass = node.className;
+        styleProperties.forEach( (prop) => {
+            if (prop === 'fontStyle' && nodeClass !== italicClass) {
+                return;
+            }
+            if (prop === 'fontWeight'
+                && nodeClass !== boldClass
+                && nodeClass !== header1Class
+                && nodeClass !== header2Class
+            ) {
+                return;
+            }
+            node.style[prop] = nodeStyle[prop];
+        });
+    })
+}
+
 buttons.forEach((btn) => {
 
     btn.addEventListener('click', () => {
@@ -138,32 +168,13 @@ buttons.forEach((btn) => {
 
             insertNode(range, newElement);
             sanitizeEditorGarbageTags();
+            createInlineStyles();
         }
     })
 });
 
 
 /** PASTE COPY CUT EVENT */
-
-/*
-* Helvetica cuz MS word identify it
-* */
-const fontFamily = 'font-family: Helvetica, Arial, sans-serif;'
-const header1Style = `font-size: 24px; ${fontFamily}`;
-const header2Style = `font-size: 19px; ${fontFamily}`;
-const boldStyle = `font-weight: 900; ${fontFamily}`;
-const italicStyle = `font-style: italic; ${fontFamily}`;
-
-editor.addEventListener('paste', () => {
-    /** delete all styles element in editor */
-    setTimeout(() => {
-        /** setTimeout for call func of the end call stack */
-        const allElementWithStyle = editor.querySelectorAll('[style]');
-        allElementWithStyle.forEach((node) => {
-            node.removeAttribute('style');
-        })
-    }, 0);
-});
 
 /**
  * Identify parent class for case:
@@ -175,17 +186,12 @@ editor.addEventListener('paste', () => {
 const identifyParentClass = (selection) => {
     const parentNode = selection.focusNode.parentNode;
     let classParentNode = '';
-    if (
-        parentNode === selection.anchorNode.parentNode
-        && parentNode.nodeType !== 3
-        && parentNode.className
-    ) {
+    if (parentNode === selection.anchorNode.parentNode && parentNode.nodeType !== 3 && parentNode.className) {
         const parentClass = parentNode.className;
-        /** todo: add variables with className (header1-text, header2-text, bold-text, italic-text)  */
-        if (parentClass === 'header1-text'
-            || parentClass === 'header2-text'
-            || parentClass === 'bold-text'
-            || parentClass === 'italic-text'
+        if (parentClass === header1Class
+            || parentClass === header2Class
+            || parentClass === boldClass
+            || parentClass === italicClass
         ) {
             classParentNode = parentClass;
         }
@@ -195,86 +201,30 @@ const identifyParentClass = (selection) => {
 }
 
 /**
- * Add style attribute for copied content with class
- *  @param {HTMLElement} rootSpan root node of content
- *  @return {void}
- *  */
-const addStyleAttrForInnerSelectionContent = (rootSpan) => {
-    const headers1 = rootSpan.querySelectorAll('.header1-text');
-    headers1.forEach(node => node.style = header1Style);
+* @param event {Event}
+* @param isCut {boolean}
+* */
+const cutCopyListener = (event, isCut = false) => {
+    const clipboardData = (event.clipboardData || window.clipboardData);
+    const selection = document.getSelection();
 
-    const headers2 = rootSpan.querySelectorAll('.header2-text');
-    headers2.forEach(node => node.style = header2Style);
+    const classParentNode = identifyParentClass(selection);
 
-    const bold = rootSpan.querySelectorAll('.bold-text');
-    bold.forEach(node => node.style = boldStyle);
+    const range = selection.getRangeAt(0);
+    const oldContent = isCut ? range.extractContents() : range.cloneContents();
 
-    const italic = rootSpan.querySelectorAll('.italic-text');
-    italic.forEach(node => node.style = italicStyle);
-};
+    const rootSpan = createElement(classParentNode);
+    rootSpan.appendChild( oldContent.cloneNode(true) );
 
-/**
- * Add style attribute for root node
- *  @param {HTMLElement} rootSpan root node of content
- *  @return {void}
- *  */
-const addStyleAttrForRoot = (rootSpan) => {
-    switch (rootSpan.className) {
-        case 'header1-text':
-            rootSpan.style = header1Style;
-            break;
-        case 'header2-text':
-            rootSpan.style = header2Style;
-            break;
-        case 'bold-text':
-            rootSpan.style = boldStyle;
-            break;
-        case 'italic-text':
-            rootSpan.style = italicStyle;
-            break;
-        default:
-            rootSpan.style = fontFamily;
-            break;
-    }
+    clipboardData.setData('text/html', rootSpan.outerHTML + "");
+    event.preventDefault();
+    sanitizeEditorGarbageTags();
 }
 
 editor.addEventListener('cut', (event) => {
-    const clipboardData = (event.clipboardData || window.clipboardData);
-    const selection = document.getSelection();
-
-    const classParentNode = identifyParentClass(selection);
-
-    const range = selection.getRangeAt(0);
-    const oldContent = range.extractContents();
-
-    const rootSpan = createElement(classParentNode);
-    rootSpan.appendChild( oldContent.cloneNode(true) );
-
-    addStyleAttrForInnerSelectionContent(rootSpan);
-    addStyleAttrForRoot(rootSpan);
-
-    clipboardData.setData('text/html', rootSpan.outerHTML + "");
-    event.preventDefault();
-    sanitizeEditorGarbageTags();
+    cutCopyListener(event, true);
 });
 
-// repeated code...
 editor.addEventListener('copy', (event) => {
-    const clipboardData = (event.clipboardData || window.clipboardData);
-    const selection = document.getSelection();
-
-    const classParentNode = identifyParentClass(selection);
-
-    const range = selection.getRangeAt(0);
-    const oldContent = range.cloneContents();
-
-    const rootSpan = createElement(classParentNode);
-    rootSpan.appendChild( oldContent.cloneNode(true) );
-
-    addStyleAttrForInnerSelectionContent(rootSpan);
-    addStyleAttrForRoot(rootSpan);
-
-    clipboardData.setData('text/html', rootSpan.outerHTML + "");
-    event.preventDefault();
-    sanitizeEditorGarbageTags();
+    cutCopyListener(event);
 });
