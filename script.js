@@ -117,7 +117,7 @@ const isSelectionAtEditArea = (parent) => {
  * create inline Styles on elements
  * */
 createInlineStyles = () => {
-    const nodeList = editor.querySelectorAll(`*`);
+    const nodeList = editor.querySelectorAll(`.${italicClass}, .${boldClass}, .${header1Class}, .${header2Class}`);
     nodeList.forEach( (node) => {
         const nodeStyle = getComputedStyle(node);
         const nodeClass = node.className;
@@ -127,6 +127,10 @@ createInlineStyles = () => {
             }
             if (prop === 'fontWeight'
                 && nodeClass !== boldClass
+            ) {
+                return;
+            }
+            if (prop === 'fontSize'
                 && nodeClass !== header1Class
                 && nodeClass !== header2Class
             ) {
@@ -173,58 +177,8 @@ buttons.forEach((btn) => {
     })
 });
 
-
-/** PASTE COPY CUT EVENT */
-
-/**
- * Identify parent class for case:
- *  <span class="bold">so|me te|xt</span>
- *                       ^-----^
- *  @param selection {Selection}
- *  @return {string}
- *  */
-const identifyParentClass = (selection) => {
-    const parentNode = selection.focusNode.parentNode;
-    let classParentNode = '';
-    if (parentNode === selection.anchorNode.parentNode && parentNode.nodeType !== 3 && parentNode.className) {
-        const parentClass = parentNode.className;
-        if (parentClass === header1Class
-            || parentClass === header2Class
-            || parentClass === boldClass
-            || parentClass === italicClass
-        ) {
-            classParentNode = parentClass;
-        }
-
-    }
-    return classParentNode;
-}
-
-/**
-* @param event {Event}
-* @param isCut {boolean}
-* */
-const cutCopyListener = (event, isCut = false) => {
-    const clipboardData = (event.clipboardData || window.clipboardData);
-    const selection = document.getSelection();
-
-    const classParentNode = identifyParentClass(selection);
-
-    const range = selection.getRangeAt(0);
-    const oldContent = isCut ? range.extractContents() : range.cloneContents();
-
-    const rootSpan = createElement(classParentNode);
-    rootSpan.appendChild( oldContent.cloneNode(true) );
-
-    clipboardData.setData('text/html', rootSpan.outerHTML + "");
-    event.preventDefault();
-    sanitizeEditorGarbageTags();
-}
-
-editor.addEventListener('cut', (event) => {
-    cutCopyListener(event, true);
-});
-
-editor.addEventListener('copy', (event) => {
-    cutCopyListener(event);
-});
+editor.addEventListener('paste', () => {
+    setTimeout(() => {
+        createInlineStyles();
+    }, 0);
+})
