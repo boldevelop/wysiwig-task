@@ -1,6 +1,7 @@
 const buttons = document.querySelector('.toolkit').querySelectorAll('button');
 const editor = document.querySelector('.edit-area');
 
+/* helpful constants */
 const styleProperties = ['fontSize', 'lineHeight', 'fontWeight', 'color', 'fontFamily', 'fontStyle'];
 const header1Class = 'header1-text';
 const header2Class = 'header2-text';
